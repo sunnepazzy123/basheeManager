@@ -50,9 +50,14 @@ executeSqlScript() {
     local QueryFilePath=$1
     local log_file=logs/execution_log.txt
 
-    checkPathIsSQLFile $QueryFilePath
+    # Ensure to check the path correctly
+    checkPathIsSQLFile "$QueryFilePath"
 
-    QueryFile=$(cat $QueryFilePath)
+    # Read the SQL file
+    QueryFile=$(cat "$QueryFilePath") || {
+        echo -e "\e[0;31mError: Unable to read SQL file: $QueryFilePath\e[0m"
+        exit 1
+    }
 
     local start_time=$(date +%s%N)
     if docker exec -i "$DOCKER_CONTAINER_NAME" psql -U "$DOCKER_DB_USER" -d "$DOCKER_DB_NAME" -c "$QueryFile"; then
@@ -266,26 +271,22 @@ docker exec -it $container_name psql -U $db_user -d $db_name -f /export_to_csv.s
 }
 
 handleSqlQueryExecution() {
-            # Prompt for SQL query option
+    # Prompt for SQL query option
     read -p "Enter your choice (all/one): " command
     echo ""
     echo "your command is $command"
 
-    SQL_QUERY_FOLDER="$(pwd)/scripts/sqlQueries"
+    SQL_QUERY_FOLDER="$(pwd)/sqlQueries"
     
     if [[ "$command" == "all" ]]; then
-        # Use default query path if "all" is specified  
+        # Use default query path if "all" is specified
         executeSqlScripts $SQL_QUERY_FOLDER
-        echo "$SQL_QUERY_FOLDER"
     elif [[ "$command" == "one" ]]; then
         # Prompt for SQL query file path
         read -p "Enter the SQL query file path (default: $SQL_QUERY_FOLDER/$SQL_QUERY_FILE): " SQL_QUERY_FILE
-        SQL_QUERY_FILE=${SQL_QUERY_FILE:-query.sql}  # Use default value if not provided
-        
+        SQL_QUERY_FILE=$SQL_QUERY_FOLDER/$SQL_QUERY_FILE
         # Construct the full file path
-        SQL_QUERY_FILE="$SQL_QUERY_FOLDER/$SQL_QUERY_FILE"
         executeSqlScript $SQL_QUERY_FILE
-        echo "$SQL_QUERY_FILE"
     else
         echo "Wrong Command"
     fi
@@ -294,19 +295,68 @@ handleSqlQueryExecution() {
 
 printScreen() {
     clear  # Clear the screen for a cleaner display
+    check_docker_status
     # Print the current working directory for debugging
     echo "Current Working Directory: $(pwd)"
     echo "===================================="
-    echo "        Banshee Manager"
+    echo "        Bashee Manager"
     echo "===================================="
     echo "===================================="
     echo "        SQL Query Runner"
     echo "===================================="
     echo ""
     echo -e "\e[1;33mChoose your option:\e[0m"
-    echo "1. Run Multiple Queries (all)"
-    echo "2. Run Single Query (one)"
+    echo "1. Run Multiple Queries (all) from sqlQueries folder"
+    echo "2. Run Single Query (one) from sqlQueries folder"
     echo "" 
+}
+
+# Function to check Docker on Linux
+check_docker_linux() {
+    if systemctl is-active --quiet docker; then
+        echo "Docker is running on Linux"
+    else
+        echo "Docker is not running on Linux"
+        exit 1
+    fi
+}
+
+# Function to check Docker on Windows
+check_docker_windows() {
+    dockerStatus=$(powershell.exe -Command "(Get-Service -Name 'com.docker.service').Status")
+    if [[ $dockerStatus == *"Running"* ]]; then
+        echo "Docker is running on Windows"
+    else
+        echo "Docker is not running on Windows"
+        exit 1
+    fi
+}
+
+# Function to check if Docker is running
+check_docker_status() {
+    if docker info > /dev/null 2>&1; then
+        echo -e "\e[0;32mDocker is running\e[0m"
+    else
+        echo "Docker is not running"
+        exit 1
+    fi
+    echo -e "\e[0;32mChecking if .env file exist\e[0m"
+    checkPathExist $(pwd)/.env
+}
+
+
+detectOs() {
+    # Detect OS
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux OS
+        check_docker_linux
+    elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+        # Windows OS (using Git Bash or WSL)
+        check_docker_windows
+    else
+        echo "Unsupported OS"
+        exit 1
+    fi 
 }
 
 
