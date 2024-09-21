@@ -297,6 +297,9 @@ printScreen() {
     # Print the current working directory for debugging
     echo "Current Working Directory: $(pwd)"
     echo "===================================="
+    echo "        Banshee Manager"
+    echo "===================================="
+    echo "===================================="
     echo "        SQL Query Runner"
     echo "===================================="
     echo ""
