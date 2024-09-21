@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "8080:80"
+
+  apache:
+    image: httpd:latest
+    container_name: apache
+    ports:
+      - "82:82"
+    volumes:
+      - ./html:/usr/local/apache2/htdocs  # Mount your HTML files to serve
+

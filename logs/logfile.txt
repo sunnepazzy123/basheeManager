@@ -1,0 +1,29 @@
+[1;33mdatabase configuration is set[0m
+hello this is a job
+[1;33mdatabase configuration is set[0m
+hello this is a job
+[1;33mdatabase configuration is set[0m
+hello this is a job
+[1;33mdatabase configuration is set[0m
+hello this is a job
+[031mError: The specified file  is not a .sql file.[0m
+[1;33mdatabase configuration is set[0m
+hello this is a job
+[0;32mChecked: PATH is /home/suodibo/wdteam-app/invoice-generator/scripts/sqlQueries/sql_query.sql [0m
+NOTICE:  relation "example_table" already exists, skipping
+CREATE TABLE
+/home/suodibo/wdteam-app/invoice-generator/scripts/helpers/index.sh: line 42: logs/execution_log.txt: No such file or directory
+[1;34mSQL script executed successfully in 1187 milliseconds.!! Check ./logs folder to read execution logs[0m
+[1;33mdatabase configuration is set[0m
+hello this is a job
+[0;32mChecked: PATH is /home/suodibo/wdteam-app/invoice-generator/scripts/sqlQueries/sql_query.sql [0m
+CREATE TABLE
+NOTICE:  relation "example_table" already exists, skipping
+/home/suodibo/wdteam-app/invoice-generator/scripts/helpers/index.sh: line 42: logs/execution_log.txt: No such file or directory
+[1;34mSQL script executed successfully in 130 milliseconds.!! Check ./logs folder to read execution logs[0m
+[1;33mdatabase configuration is set[0m
+hello this is a job
+[0;32mChecked: PATH is /home/suodibo/wdteam-app/invoice-generator/scripts/sqlQueries/sql_query.sql [0m
+CREATE TABLE
+/home/suodibo/wdteam-app/invoice-generator/scripts/helpers/index.sh: line 42: logs/execution_log.txt: No such file or directory
+[1;34mSQL script executed successfully in 185 milliseconds.!! Check ./logs folder to read execution logs[0m
