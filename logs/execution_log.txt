@@ -80,3 +80,14 @@ SQL scripts executed successfully in 195 milliseconds.
 SQL script executed successfully in 80 milliseconds.
 SQL script executed successfully in 87 milliseconds.
 SQL scripts executed successfully in 173 milliseconds.
+SQL script executed successfully in 768 milliseconds.
+SQL script executed successfully in 190 milliseconds.
+SQL script executed successfully in 234 milliseconds.
+SQL scripts executed successfully in 436 milliseconds.
+SQL script executed successfully in 220 milliseconds.
+SQL script executed successfully in 242 milliseconds.
+SQL script executed successfully in 286 milliseconds.
+SQL script executed successfully in 260 milliseconds.
+SQL scripts executed successfully in 557 milliseconds.
+SQL script executed successfully in 502 milliseconds.
+SQL script executed successfully in 116 milliseconds.
