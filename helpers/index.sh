@@ -3,11 +3,19 @@
 exportTableAsSqlFromDB() {
     local table=$1
 
-    echo "Exporting table to a file..."
-    if docker exec -i "$DOCKER_CONTAINER_NAME" pg_dump -U "$DOCKER_DB_USER" -d "$DOCKER_DB_NAME" -t $table --format=plain >exports/"$table.sql"; then
-        echo "Export successful: look the exports folder"
+    echo "Checking if the table exists..."
+    if docker exec -i "$DOCKER_CONTAINER_NAME" psql -U "$DOCKER_DB_USER" -d "$DOCKER_DB_NAME" -tAc "SELECT to_regclass('$table')" | grep -q "$table"; then
+        echo "Table exists, proceeding with export..."
+
+        echo "Exporting table to a file..."
+        if docker exec -i "$DOCKER_CONTAINER_NAME" pg_dump -U "$DOCKER_DB_USER" -d "$DOCKER_DB_NAME" -t "$table" --format=plain >exports/"$table.sql"; then
+            echo "Export successful: check the exports folder."
+        else
+            echo "Export failed."
+            exit 1
+        fi
     else
-        echo "Export failed."
+        echo "Table '$table' does not exist."
         exit 1
     fi
 }
@@ -18,7 +26,7 @@ exportTableAsCsvFromDB() {
     local container_temp_path="/tmp/$table.csv" # Adjust the temporary path inside the container
 
     echo "Exporting table to a CSV file..."
-    if docker exec -t "$DOCKER_CONTAINER_NAME" psql -U "$DOCKER_DB_USER" -d "$DOCKER_DB_NAME" -c "\\COPY $table TO $container_temp_path WITH CSV HEADER"; then
+    if docker exec -t "$DOCKER_CONTAINER_NAME" psql -U "$DOCKER_DB_USER" -d "$DOCKER_DB_NAME" -c "\\COPY \"$table\" TO $container_temp_path WITH CSV HEADER"; then
         docker cp "$DOCKER_CONTAINER_NAME":$container_temp_path "$host_path"
         echo -e "\e[0;32mExport successful: CSV file copied to '$host_path'.\e[0m"
 
@@ -220,7 +228,6 @@ execute_docker_compose() {
     fi
 }
 
-
 docker_login() {
     # Check if all required arguments are provided
     if [ -z "$DOCKER_USER" ] || [ -z "$DOCKER_PASSWORD" ]; then
@@ -252,7 +259,7 @@ export_to_csv() {
     local host_path="exports/$table.csv"        # Replace with the desired path on the host
     local container_temp_path="/tmp/$table.csv" # Adjust the temporary path inside the container
 
-docker exec -it $container_name psql -U $db_user -d $db_name -f /export_to_csv.sql
+    docker exec -it $container_name psql -U $db_user -d $db_name -f /export_to_csv.sql
     echo "Exporting table to a CSV file..."
     if docker exec -t "$DOCKER_CONTAINER_NAME" psql -U "$DOCKER_DB_USER" -d "$DOCKER_DB_NAME" -c "\\COPY $table TO $container_temp_path WITH CSV HEADER"; then
         docker cp "$DOCKER_CONTAINER_NAME":$container_temp_path "$host_path"
@@ -270,31 +277,8 @@ docker exec -it $container_name psql -U $db_user -d $db_name -f /export_to_csv.s
     fi
 }
 
-handleSqlQueryExecution() {
-    # Prompt for SQL query option
-    read -p "Enter your choice (all/one): " command
-    echo ""
-    echo "your command is $command"
-
-    SQL_QUERY_FOLDER="$(pwd)/sqlQueries"
-    
-    if [[ "$command" == "all" ]]; then
-        # Use default query path if "all" is specified
-        executeSqlScripts $SQL_QUERY_FOLDER
-    elif [[ "$command" == "one" ]]; then
-        # Prompt for SQL query file path
-        read -p "Enter the SQL query file path (default: $SQL_QUERY_FOLDER/$SQL_QUERY_FILE): " SQL_QUERY_FILE
-        SQL_QUERY_FILE=$SQL_QUERY_FOLDER/$SQL_QUERY_FILE
-        # Construct the full file path
-        executeSqlScript $SQL_QUERY_FILE
-    else
-        echo "Wrong Command"
-    fi
-}
-
-
 printScreen() {
-    clear  # Clear the screen for a cleaner display
+    clear # Clear the screen for a cleaner display
     check_docker_status
     # Print the current working directory for debugging
     echo "Current Working Directory: $(pwd)"
@@ -308,7 +292,9 @@ printScreen() {
     echo -e "\e[1;33mChoose your option:\e[0m"
     echo "1. Run Multiple Queries (all) from sqlQueries folder"
     echo "2. Run Single Query (one) from sqlQueries folder"
-    echo "" 
+    echo "3. Export Table as Csv From DB to exports folder"
+    echo "4. Export Table as SQL From DB to exports folder"
+    echo ""
 }
 
 # Function to check Docker on Linux
@@ -334,7 +320,7 @@ check_docker_windows() {
 
 # Function to check if Docker is running
 check_docker_status() {
-    if docker info > /dev/null 2>&1; then
+    if docker info >/dev/null 2>&1; then
         echo -e "\e[0;32mDocker is running\e[0m"
     else
         echo "Docker is not running"
@@ -343,7 +329,6 @@ check_docker_status() {
     echo -e "\e[0;32mChecking if .env file exist\e[0m"
     checkPathExist $(pwd)/.env
 }
-
 
 detectOs() {
     # Detect OS
@@ -356,11 +341,39 @@ detectOs() {
     else
         echo "Unsupported OS"
         exit 1
-    fi 
+    fi
 }
 
+handleInputCommand() {
+    # Prompt for SQL query option
+    read -p "Enter your choice: " command
+    echo ""
+    echo "your command is $command"
+
+    SQL_QUERY_FOLDER="$(pwd)/sqlQueries"
+    EXPORTS_FOLDER="$(pwd)/exports"
+
+    if [[ "$command" == "1" ]]; then
+        executeSqlScripts $SQL_QUERY_FOLDER
+    elif [[ "$command" == "2" ]]; then
+        # Prompt for SQL query file path
+        read -p "Enter the SQL query file path (default: $SQL_QUERY_FOLDER/$SQL_QUERY_FILE): " SQL_QUERY_FILE
+        SQL_QUERY_FILE=$SQL_QUERY_FOLDER/$SQL_QUERY_FILE # Construct the full file path
+        executeSqlScript $SQL_QUERY_FILE
+    elif [[ "$command" == "3" ]]; then
+        read -p "Enter table name: " tableName
+        echo ""
+        exportTableAsCsvFromDB $tableName
+    elif [[ "$command" == "4" ]]; then
+        read -p "Enter table name: " tableName
+        echo ""
+        exportTableAsSqlFromDB $tableName
+    else
+        echo "Wrong Command"
+    fi
+}
 
 startApp() {
     printScreen
-    handleSqlQueryExecution
+    handleInputCommand
 }
