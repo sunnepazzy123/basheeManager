@@ -294,6 +294,7 @@ printScreen() {
     echo "2. Run Single Query (one) from sqlQueries folder"
     echo "3. Export Table as Csv From DB to exports folder"
     echo "4. Export Table as SQL From DB to exports folder"
+    echo "5. Export Dump all collections as Json From Mongo DB to exports folder"
     echo ""
 }
 
@@ -368,9 +369,86 @@ handleInputCommand() {
         read -p "Enter table name: " tableName
         echo ""
         exportTableAsSqlFromDB $tableName
+    elif [[ "$command" == "5" ]]; then
+        read -p "Enter table name: " tableName
+        echo ""
+        dump_mongo_json $tableName
     else
         echo "Wrong Command"
     fi
+}
+
+dump_mongo_json() {
+
+  local vars=("DOCKER_CONTAINER_NAME" "DOCKER_DB_NAME" "DOCKER_DB_USER" "DOCKER_DB_PASS" "DOCKER_AUTH_DB" \
+              "REMOTE_HOST" "REMOTE_USER" "REMOTE_PATH" "LOCAL_PATH" "PEM_KEY")
+
+  validate_env $vars
+
+  COLLECTION=$1
+
+  echo "==> Exporting from MongoDB container..."
+  if [ -z "$COLLECTION" ]; then
+    # No collection provided → export all
+    docker exec -it $DOCKER_CONTAINER_NAME bash -c "
+      mkdir -p /dump &&
+      for col in \$(mongosh -u $DOCKER_DB_USER -p $DOCKER_DB_PASS --authenticationDatabase $DOCKER_AUTH_DB --quiet --eval \"db = db.getSiblingDB(\\\"$DOCKER_DB_NAME\\\"); db.getCollectionNames().join(\\\" \\\" )\"); do
+        echo Exporting \$col
+        mongoexport -u $DOCKER_DB_USER -p $DOCKER_DB_PASS --authenticationDatabase $DOCKER_AUTH_DB \
+          --db $DOCKER_DB_NAME --collection \$col --out /dump/\$col.json
+      done
+    "
+  else
+    # Single collection
+    docker exec -it $DOCKER_CONTAINER_NAME bash -c "
+      mkdir -p /dump &&
+      echo Exporting $COLLECTION &&
+      mongoexport -u $DOCKER_DB_USER -p $DOCKER_DB_PASS --authenticationDatabase $DOCKER_AUTH_DB \
+        --db $DOCKER_DB_NAME --collection $COLLECTION --out /dump/$COLLECTION.json
+    "
+  fi
+
+  download_folder_from_remote 
+}
+
+download_folder_from_remote() {
+
+  REMOTE="$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH"
+
+  if [ -z "$REMOTE_USER" ] || [ -z "$REMOTE_HOST" ] || [ -z "$REMOTE_PATH" ] || [ -z "$LOCAL_PATH" ] || [ -z "$PEM_KEY" ]; then
+    echo "Usage: download_folder_from_remote <user> <host> <remote_path> <local_path> <pem_key>"
+    return 1
+  fi
+
+  echo "==> Downloading folder '$REMOTE_PATH' from $REMOTE_HOST to '$LOCAL_PATH'..."
+  mkdir -p "$LOCAL_PATH"
+  scp -i "$PEM_KEY" -r $REMOTE "$LOCAL_PATH"
+  echo "==> Done. Folder available at $LOCAL_PATH/$(basename $REMOTE_PATH)"
+}
+
+
+validate_env() {
+  vars=$1
+  local missing=()
+
+  for var in "${vars[@]}"; do
+    if [ -z "${!var}" ]; then
+      missing+=("$var")
+    fi
+  done
+
+  if [ ${#missing[@]} -gt 0 ]; then
+    echo "Error: The following environment variables are not set:"
+    for var in "${missing[@]}"; do
+      echo "  - $var"
+    done
+    
+    echo "Environment validation failed. Exiting."
+    exit 1
+  fi
+
+  echo "All required environment variables are set."
+  return 0     # Return 0 = success
 }
 
 startApp() {
